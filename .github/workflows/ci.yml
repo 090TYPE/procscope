@@ -1,0 +1,13 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test shared crate
+        run: cargo test -p procscope-common --features user
+      - name: Test host-side crate
+        run: cargo test -p procscope --lib --test aggregation --test cli
