@@ -35,6 +35,9 @@ pub async fn run(pid_filter: Option<u32>, _command: Vec<String>, print: bool) ->
     for (prog_name, tp) in [
         ("on_openat", "sys_enter_openat"),
         ("on_connect", "sys_enter_connect"),
+        ("on_read", "sys_enter_read"),
+        ("on_write", "sys_enter_write"),
+        ("on_accept", "sys_enter_accept"),
         ("on_execve", "sys_enter_execve"),
         ("on_exit", "sys_enter_exit_group"),
     ] {

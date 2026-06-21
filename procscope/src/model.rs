@@ -23,9 +23,15 @@ pub fn category(kind: EventKind) -> Category {
     }
 }
 
+/// Category of an event straight from its raw `kind` field (for the UI).
+pub fn category_of(e: &Event) -> Category {
+    category(kind_from_u32(e.kind))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Process {
     pub pid: u32,
+    pub name: String,
     pub total: u64,
     pub by_category: [u64; N_CATEGORIES],
     pub recent: VecDeque<Event>,
@@ -40,10 +46,15 @@ pub struct AppState {
 impl AppState {
     pub fn ingest(&mut self, e: Event) {
         let kind = kind_from_u32(e.kind);
+        let comm = e.comm_str();
+        let name = if comm.is_empty() { None } else { Some(comm.to_string()) };
         let entry = self.procs.entry(e.pid).or_insert_with(|| Process {
             pid: e.pid,
             ..Default::default()
         });
+        if let Some(name) = name {
+            entry.name = name;
+        }
         entry.total += 1;
         entry.by_category[category(kind) as usize] += 1;
         entry.recent.push_back(e);
@@ -96,7 +107,13 @@ mod tests {
     use super::*;
 
     fn ev(pid: u32, kind: EventKind) -> Event {
-        Event { pid, kind: kind as u32, arg: 0, ts_ns: 0 }
+        Event::new(pid, kind, 0)
+    }
+
+    fn ev_comm(pid: u32, kind: EventKind, comm: &[u8]) -> Event {
+        let mut e = Event::new(pid, kind, 0);
+        e.comm[..comm.len()].copy_from_slice(comm);
+        e
     }
 
     #[test]
@@ -129,6 +146,13 @@ mod tests {
     }
 
     #[test]
+    fn captures_process_name_from_comm() {
+        let mut state = AppState::default();
+        state.ingest(ev_comm(10, EventKind::Open, b"curl"));
+        assert_eq!(state.process(10).unwrap().name, "curl");
+    }
+
+    #[test]
     fn processes_sorted_by_rate_desc() {
         let mut state = AppState::default();
         state.ingest(ev(1, EventKind::Open));
@@ -142,7 +166,7 @@ mod tests {
     fn keeps_bounded_recent_events_per_selected_pid() {
         let mut state = AppState::default();
         for i in 0..150u64 {
-            state.ingest(Event { pid: 5, kind: EventKind::Open as u32, arg: i, ts_ns: i });
+            state.ingest(Event::new(5, EventKind::Open, i));
         }
         let recent = state.recent_for(5);
         assert_eq!(recent.len(), 100, "ring capped at 100");

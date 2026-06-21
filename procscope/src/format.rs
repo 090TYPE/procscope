@@ -24,10 +24,14 @@ pub fn format_event(e: &Event) -> String {
         _ => EventKind::Other,
     };
     match kind {
-        // `arg` is 0 until per-syscall argument decode lands (v2); show the bare
-        // syscall name in that case rather than a misleading `fd 0`.
-        EventKind::Open if e.arg == 0 => "openat".to_string(),
-        EventKind::Open => format!("openat -> fd {}", e.arg),
+        EventKind::Open => {
+            let p = e.path_str();
+            if p.is_empty() {
+                "openat".to_string()
+            } else {
+                format!("openat {}", p)
+            }
+        }
         EventKind::Read if e.arg == 0 => "read".to_string(),
         EventKind::Read => format!("read fd {}", e.arg),
         EventKind::Write if e.arg == 0 => "write".to_string(),
@@ -56,23 +60,33 @@ pub fn format_event(e: &Event) -> String {
 mod tests {
     use super::*;
 
-    fn ev(kind: EventKind, arg: u64) -> Event {
-        Event { pid: 1, kind: kind as u32, arg, ts_ns: 0 }
+    #[test]
+    fn formats_openat_with_path() {
+        let mut e = Event::new(1, EventKind::Open, 0);
+        e.path[..11].copy_from_slice(b"/etc/passwd");
+        e.path_len = 11;
+        assert_eq!(format_event(&e), "openat /etc/passwd");
     }
 
     #[test]
-    fn formats_open_with_fd() {
-        assert_eq!(format_event(&ev(EventKind::Open, 5)), "openat -> fd 5");
+    fn formats_openat_without_path() {
+        let e = Event::new(1, EventKind::Open, 0);
+        assert_eq!(format_event(&e), "openat");
+    }
+
+    #[test]
+    fn formats_read_with_fd() {
+        assert_eq!(format_event(&Event::new(1, EventKind::Read, 5)), "read fd 5");
     }
 
     #[test]
     fn formats_connect_with_ipv4() {
-        let arg = encode_v4([1, 2, 3, 4], 443);
-        assert_eq!(format_event(&ev(EventKind::Connect, arg)), "connect 1.2.3.4:443");
+        let e = Event::new(1, EventKind::Connect, encode_v4([1, 2, 3, 4], 443));
+        assert_eq!(format_event(&e), "connect 1.2.3.4:443");
     }
 
     #[test]
     fn formats_exit() {
-        assert_eq!(format_event(&ev(EventKind::Exit, 0)), "exit");
+        assert_eq!(format_event(&Event::new(1, EventKind::Exit, 0)), "exit");
     }
 }

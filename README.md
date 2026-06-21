@@ -87,10 +87,14 @@ on the host. The image's entrypoint mounts `tracefs` for you.
 kernel tracepoint -> ring buffer -> capture -> Event -> model (aggregate) -> ui (render)
 ```
 
-- `procscope-ebpf` attaches to syscall tracepoints (`openat`, `connect`,
-  `execve`, `exit_group`) and pushes events to a ring buffer.
+- `procscope-ebpf` attaches to syscall tracepoints (`openat`, `read`, `write`,
+  `connect`, `accept`, `execve`, `exit_group`), grabs the process name and the
+  interesting argument (file path, destination `IP:port`, or fd), and pushes
+  events to a ring buffer.
 - `procscope` loads it with [`aya`](https://aya-rs.dev), drains the ring buffer,
-  aggregates per-PID, and renders with [`ratatui`](https://ratatui.rs).
+  aggregates per-PID, and renders with [`ratatui`](https://ratatui.rs) — process
+  names, per-category counters, and a colour-coded event stream
+  (file / network / process).
 
 All host-side logic (`model`, `format`) is pure and unit-tested; the kernel path
 is verified on a real Linux box.
@@ -99,8 +103,9 @@ is verified on a real Linux box.
 
 ## Status
 
-MVP. Captures a high-value subset of syscalls (file / network / process). Full
-argument decode, flame graphs and recording are on the roadmap.
+Captures file (`openat`/`read`/`write`), network (`connect`/`accept`) and process
+(`execve`/`exit`) syscalls with process names and decoded arguments. Flame graphs,
+per-fd path resolution and recording are on the roadmap.
 
 ## License
 

@@ -2,7 +2,7 @@ use procscope::model::{AppState, Category};
 use procscope_common::{Event, EventKind};
 
 fn ev(pid: u32, kind: EventKind) -> Event {
-    Event { pid, kind: kind as u32, arg: 0, ts_ns: 0 }
+    Event::new(pid, kind, 0)
 }
 
 #[test]
