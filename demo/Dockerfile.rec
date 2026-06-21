@@ -1,0 +1,11 @@
+# Recording image: procscope + asciinema + agg, to generate docs/overview.gif.
+FROM procscope:dev
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    asciinema ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY demo/record-demo.sh /record-demo.sh
+RUN chmod +x /record-demo.sh
+
+ENTRYPOINT ["/record-demo.sh"]

@@ -24,9 +24,15 @@ pub fn format_event(e: &Event) -> String {
         _ => EventKind::Other,
     };
     match kind {
+        // `arg` is 0 until per-syscall argument decode lands (v2); show the bare
+        // syscall name in that case rather than a misleading `fd 0`.
+        EventKind::Open if e.arg == 0 => "openat".to_string(),
         EventKind::Open => format!("openat -> fd {}", e.arg),
+        EventKind::Read if e.arg == 0 => "read".to_string(),
         EventKind::Read => format!("read fd {}", e.arg),
+        EventKind::Write if e.arg == 0 => "write".to_string(),
         EventKind::Write => format!("write fd {}", e.arg),
+        EventKind::Connect if e.arg == 0 => "connect".to_string(),
         EventKind::Connect => {
             let ip = e.arg & 0xFFFF_FFFF;
             let port = (e.arg >> 32) & 0xFFFF;
