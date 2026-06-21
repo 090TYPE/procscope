@@ -14,10 +14,14 @@ struct Cli {
     /// Launch this command and watch it (everything after `--`).
     #[arg(last = true)]
     command: Vec<String>,
+
+    /// Print captured events as plain text instead of the TUI (pipeable).
+    #[arg(long)]
+    print: bool,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    capture::run(cli.pid, cli.command).await
+    capture::run(cli.pid, cli.command, cli.print).await
 }

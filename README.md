@@ -43,9 +43,9 @@ cargo install bpf-linker
 cargo build --release
 
 # run it
-sudo ./target/release/procscope            # watch everything
+sudo ./target/release/procscope            # watch everything (TUI)
 sudo ./target/release/procscope -p 1234    # watch one PID
-sudo ./target/release/procscope -- curl example.com   # launch and watch
+sudo ./target/release/procscope --print    # stream events as plain text (pipeable)
 ```
 
 Requires Linux with eBPF support and `CAP_BPF` (or root). Keys: `↑/↓` select a

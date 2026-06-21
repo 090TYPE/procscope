@@ -3,10 +3,20 @@
 
 use crate::ui;
 use aya::{maps::RingBuf, programs::TracePoint, Ebpf};
+use procscope::format::format_event;
 use procscope::model::AppState;
 use procscope_common::Event;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+/// Decode one ring-buffer record into an `Event`, if it is large enough.
+fn decode(bytes: &[u8]) -> Option<Event> {
+    if bytes.len() >= core::mem::size_of::<Event>() {
+        Some(*bytemuck::from_bytes(&bytes[..core::mem::size_of::<Event>()]))
+    } else {
+        None
+    }
+}
 
 /// Path to the compiled eBPF object. `procscope-ebpf` is a standalone workspace,
 /// so its build output lives under `procscope-ebpf/target/`, not the host target.
@@ -15,7 +25,7 @@ const BPF_OBJ: &str = concat!(
     "/../procscope-ebpf/target/bpfel-unknown-none/release/procscope"
 );
 
-pub async fn run(pid_filter: Option<u32>, _command: Vec<String>) -> anyhow::Result<()> {
+pub async fn run(pid_filter: Option<u32>, _command: Vec<String>, print: bool) -> anyhow::Result<()> {
     let bytes = std::fs::read(BPF_OBJ).map_err(|e| {
         anyhow::anyhow!("cannot read eBPF object at {BPF_OBJ} ({e}). Build the procscope-ebpf crate first.")
     })?;
@@ -38,19 +48,30 @@ pub async fn run(pid_filter: Option<u32>, _command: Vec<String>) -> anyhow::Resu
             .map_err(|e| anyhow::anyhow!("attach tracepoint {tp} failed: {e}"))?;
     }
 
-    let state = Arc::new(Mutex::new(AppState::default()));
     let mut ring = RingBuf::try_from(bpf.take_map("EVENTS").expect("EVENTS map"))?;
 
-    // Reader loop: drain the ring buffer into AppState.
+    // Plain-text mode: stream events to stdout. Useful for piping and demos.
+    if print {
+        loop {
+            while let Some(item) = ring.next() {
+                if let Some(e) = decode(&item) {
+                    if pid_filter.map_or(true, |p| p == e.pid) {
+                        println!("{:>7}  {}", e.pid, format_event(&e));
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    }
+
+    // TUI mode: a reader task drains the ring buffer into shared state.
+    let state = Arc::new(Mutex::new(AppState::default()));
     {
         let state = state.clone();
         tokio::spawn(async move {
             loop {
                 while let Some(item) = ring.next() {
-                    let bytes: &[u8] = &item;
-                    if bytes.len() >= core::mem::size_of::<Event>() {
-                        let e: Event =
-                            *bytemuck::from_bytes(&bytes[..core::mem::size_of::<Event>()]);
+                    if let Some(e) = decode(&item) {
                         if pid_filter.map_or(true, |p| p == e.pid) {
                             state.lock().unwrap().ingest(e);
                         }
