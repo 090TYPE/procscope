@@ -1,0 +1,22 @@
+[package]
+name = "procscope-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aya-ebpf = "0.1"
+procscope-common = { path = "../procscope-common" }
+
+[[bin]]
+name = "procscope"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
+panic = "abort"
+
+# Standalone workspace: built for the BPF target, separate from the host workspace.
+[workspace]
