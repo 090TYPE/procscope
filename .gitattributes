@@ -1,0 +1,6 @@
+# Normalize line endings. Shell scripts and Dockerfiles MUST stay LF or they
+# break in Linux/containers (the shebang would carry a trailing CR).
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.sh text eol=lf
+Dockerfile text eol=lf
