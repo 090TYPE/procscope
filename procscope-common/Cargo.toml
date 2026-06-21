@@ -1,0 +1,12 @@
+[package]
+name = "procscope-common"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bytemuck = { version = "1", optional = true }
+
+[features]
+default = []
+user = ["dep:bytemuck"]
