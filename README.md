@@ -53,6 +53,34 @@ process, `q` quits.
 
 ---
 
+## Run via Docker (any OS)
+
+No Rust toolchain needed. Works anywhere Docker runs on a BTF-enabled Linux
+kernel — including **Docker Desktop on Windows/macOS** (WSL2 / the Linux VM
+backend).
+
+```bash
+./run.sh            # Linux / macOS
+./run.sh -p 1234    # forward args to procscope
+```
+
+```powershell
+.\run.ps1           # Windows (PowerShell)
+```
+
+Or by hand:
+
+```bash
+docker build -t procscope:dev .
+docker run --rm -it --privileged --pid=host \
+  -v /sys/kernel/btf:/sys/kernel/btf:ro procscope:dev
+```
+
+`--privileged` and `--pid=host` let the container load eBPF and see every process
+on the host. The image's entrypoint mounts `tracefs` for you.
+
+---
+
 ## How it works
 
 ```
